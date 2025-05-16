@@ -18,7 +18,9 @@ dependencies = [
     "scipy (>=1.15.3,<2.0.0)",
     "ipympl (>=0.9.7,<0.10.0)",
     "pyarrow (>=20.0.0,<21.0.0)",
-    "fastparquet (>=2024.11.0,<2025.0.0)"
+    "fastparquet (>=2024.11.0,<2025.0.0)",
+    "xgboost (>=3.0.1,<4.0.0)",
+    "scikit-learn (>=1.6.1,<2.0.0)"
 ]
 
 [tool.poetry]
