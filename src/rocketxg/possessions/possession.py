@@ -1,53 +1,7 @@
-from dataclasses import dataclass, asdict
-from typing import List, Set, Optional
+from typing import List
 from rlgym_tools.rocket_league.replays.parsed_replay import ParsedReplay
-
-
-@dataclass
-class Hit:
-    frame_number: int
-    player_id: str
-    team: str
-    ball_data: dict
-    player_state: dict
-    hit_type: str = None  # 'shot', 'pass', 'dribble', 'aerial', 'clearance'
-    outcome: str = None   # 'goal', 'save', 'post', 'wide'
-    metadata: dict = None
-
-
-@dataclass
-class Possession:
-    start_frame: int
-    end_frame: int
-    player_id: int
-    team: str
-    hits: List[Hit]
-    duration: float = 0  # seconds
-    possession_type: str = None  # TODO: 'organized', 'counter', 'fifty-fifty'
-    chain_id: Optional[int] = None
-
-    @property
-    def num_hits(self):
-        return len(self.hits)
-
-
-@dataclass
-class PossessionChain:
-    start_frame: int
-    end_frame: int
-    players: Set[str]
-    team: str
-    possessions: List[Possession]
-    duration: float = 0  # seconds
-    outcome: str = None  # 'shot', 'goal', 'turnover', 'clearance'
-
-    @property
-    def num_hits(self):
-        return sum([possession.num_hits for possession in self.possessions])
-    
-    @property
-    def num_players(self):
-        return len(self.players)
+from .base import Hit, Possession, PossessionChain
+from .analysis import find_goal_hits, detect_shots
 
 
 class PossessionAnalyzer:
@@ -59,22 +13,27 @@ class PossessionAnalyzer:
         params (dict): Option parameters for the replay analysis
             - max_possession_gap: maximum number of frames between touches for a possession to count.
             - frames_per_second: number of frames per second the replay is recorded at.
+            - shot_time: time into the future hits are simulated and shots are detected.
     """
     def __init__(self):
         self.current_chain: PossessionChain | None = None
         self.current_possession: Possession | None = None
         self.params = {
             "max_possession_gap": 120,  # frames
-            "frames_per_second": 60  # fps
+            "frames_per_second": 30,  # fps
+            "shot_time": 2 # s
         }
 
     def analyze_replay(self, replay: ParsedReplay) -> List[PossessionChain]:
+        self.current_chain = None
+        self.current_possession = None
         chains = self._generate_possession_chains(replay)
-        
-        # Classify Hits
-        # Classify Possessions
-        # Classify Chains
-        return chains
+        possessions = [possession for chain in chains for possession in chain.possessions]
+        hits = [hit for possession in possessions for hit in possession.hits]
+        self._classify_hits(replay, hits)
+        self._classify_possessions(replay, possessions)
+        self._classify_chains(replay, chains)
+        return hits, possessions, chains
 
     def _generate_possession_chains(self, replay: ParsedReplay) -> List[PossessionChain]:
         chains = []
@@ -84,7 +43,6 @@ class PossessionAnalyzer:
 
         for hit_dict in replay.analyzer["hits"]:
             frame = hit_dict["frame_number"]
-            print(frame)
             player = hit_dict["player_unique_id"]
             team = self._get_player_team(player, replay)
             hit = Hit(
@@ -92,7 +50,8 @@ class PossessionAnalyzer:
                 player_id=player,
                 team=team,
                 ball_data=replay.ball_df.iloc[frame, :],
-                player_state=self._get_player_states(frame, replay)
+                player_state=self._get_player_states(frame, replay),
+                metadata={}
             )
             frames_since_last = frame - last_hit_frame if last_hit_frame else 0
             last_hit_frame = frame
@@ -182,3 +141,19 @@ class PossessionAnalyzer:
             player: state.iloc[frame, :]
             for player, state in replay.player_dfs.items()
         }
+        
+    def _classify_hits(self, replay: ParsedReplay, hits: List[Hit]):
+        # Find goals (Compare hit frame to game periods)
+        find_goal_hits(replay, hits)
+    
+    def _classify_possessions(self, replay: ParsedReplay, possessions: List[Possession]):
+        # Find dribbles (Time between player hits)
+        pass
+    
+    def _classify_chains(self, replay: ParsedReplay, chains: List[PossessionChain]):
+        # Find passes (Links between players possessions)
+        # Find 50/50s (Links between opponent possessons)
+        # Detect Shots (Last hit of a possession chain)
+        detect_shots(chains, time=self.params["shot_time"])
+        # Detect Saves (Opponent hits after a shot)
+        pass
