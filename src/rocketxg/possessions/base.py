@@ -13,6 +13,20 @@ class Hit:
     hit_type: str = None  # 'shot', 'pass', 'dribble', 'aerial', 'clearance'
     outcome: str = None   # 'goal', 'save', 'post', 'wide'
     metadata: dict = None
+    
+    def get_ball_pos(self):
+        return (
+            self.ball_data["pos_x"],
+            self.ball_data["pos_y"],
+            self.ball_data["pos_z"]
+        )
+    
+    def get_ball_vel(self):
+        return (
+            self.ball_data["vel_x"],
+            self.ball_data["vel_y"],
+            self.ball_data["vel_z"]
+        )
 
 
 @dataclass

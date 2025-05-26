@@ -12,7 +12,7 @@ def find_goal_hits(replay: ParsedReplay, hits: List[Hit]):
         start_search = bisect_left(hit_frames, goal["frame"])
         for i in range(start_search - 1, 0, -1):
             if hits[i].team == goal["is_orange"]:
-                hits[i].hit_type = "goal"
+                hits[i].outcome = "goal"
                 break
             
 
@@ -22,7 +22,9 @@ def detect_shots(chains: List[PossessionChain], time: float=1):
     for chain in chains:
         last_hit = chain.possessions[-1].hits[-1]
         # Skip shots we know are goals
-        if last_hit.hit_type == "goal":
+        if last_hit.outcome == "goal":
+            last_hit.hit_type = "shot"
+            shots += 1
             continue
         
         simulator.team = last_hit.team
@@ -32,6 +34,7 @@ def detect_shots(chains: List[PossessionChain], time: float=1):
         if simulator.is_shot:
             shots += 1
             last_hit.hit_type = "shot"
+            last_hit.outcome = "miss"  # TODO: Add more complex outcomes (Save, Post, etc.)
             last_hit.metadata["on_goal"] = simulator.on_goal
     print(f"num_shots: {shots}")
             

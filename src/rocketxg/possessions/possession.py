@@ -21,7 +21,7 @@ class PossessionAnalyzer:
         self.params = {
             "max_possession_gap": 120,  # frames
             "frames_per_second": 30,  # fps
-            "shot_time": 2 # s
+            "shot_time": 5 # s
         }
 
     def analyze_replay(self, replay: ParsedReplay) -> List[PossessionChain]:
